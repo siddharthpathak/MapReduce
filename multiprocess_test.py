@@ -83,5 +83,5 @@ if __name__=='__main__':
 
     s.spawn_reducers()
 
-    s.start_mappers()
+    s.start_job()
 

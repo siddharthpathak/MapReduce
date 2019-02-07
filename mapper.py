@@ -5,6 +5,7 @@ from xmlrpc.server import SimpleXMLRPCRequestHandler
 import xmlrpc.client
 from threading import Thread
 import json
+import socketserver
 
 
 def input_map_func(line, output_count):
@@ -17,12 +18,13 @@ def input_map_func(line, output_count):
 def mapper(port):
     print("Mapper listening on port ", port)
 
-    # Restrict to a particular path.
+    class ThreadedXMLRPCServer(socketserver.ThreadingMixIn, SimpleXMLRPCServer):
+        pass
+
     class RequestHandler(SimpleXMLRPCRequestHandler):
         rpc_paths = ('/RPC2',)
 
-    with SimpleXMLRPCServer(('localhost', port),
-                            requestHandler=RequestHandler, logRequests=False) as server:
+    with ThreadedXMLRPCServer(('localhost', port), requestHandler=RequestHandler, logRequests=False) as server:
         server.register_introspection_functions()
 
         @server.register_function
@@ -47,10 +49,12 @@ def worker(master_url, master_port, input_file_name, section):
     print("Mapper worker started working with PID: ", os.getpid())
     print("I will work on", section)
     output_count = {}
+
     with open("./tmp/"+str(os.getpid())+"/"+input_file_name) as input_file:
         for line_number, line in enumerate(input_file):
             if section[0] <= line_number <= section[1]:
                 input_map_func(line, output_count)
+
     # Write to the output file and send the keys to master
     with open("./tmp/"+str(os.getpid())+"/in_output.txt", "w+") as output_file:
         json.dump(output_count, output_file, indent=4)

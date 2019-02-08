@@ -32,5 +32,7 @@ if __name__ == '__main__':
     if seq_output_count == map_reduce_count:
         print("Output Matched!!!") 
 
+    print("Killing the cluster ")
+    s.destroy_cluster()
 
 

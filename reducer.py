@@ -6,6 +6,18 @@ from threading import Thread
 import socketserver
 
 
+def reducer_func(keys):
+    output = {}
+    for t in keys:
+        output[t[0]] = output.get(t[0], 0) + t[1]
+
+    return output
+
+
+def shutdown(server):
+    server.shutdown()
+
+
 def reducer(port):
     """
         Starts reducer RPC server on the specified port
@@ -36,6 +48,13 @@ def reducer(port):
             t.start()
             return 1
 
+        @server.register_function
+        def destroy_reducer():
+            print("Killing the reducer")
+            t = Thread(target=shutdown, args=(server,))
+            t.start()
+            return 1
+
         server.serve_forever()
 
 
@@ -47,13 +66,15 @@ def worker(mappers, allotted_keys, master_url, master_port):
     # Here the worker will calculate the output
     # Ask the mappers for the key
     print("Reducer started working")
-    final_output = {}
+    in_output = []
     for m in mappers:
         s = xmlrpc.client.ServerProxy('http://' + m[0] + ":" + str(m[1]))
         for k in allotted_keys:
-            final_output[k] = final_output.get(k, 0) + s.get_keys(k)
+            temp_key = s.get_keys(k)
+            if temp_key:
+                in_output.append([k, temp_key])
 
+    final_output = reducer_func(in_output)
     result = [(k, v) for k, v in final_output.items()]
-    # Then write to the output file and send the keys to master
     s = xmlrpc.client.ServerProxy('http://'+master_url+":"+str(master_port))
     s.send_reducer_keys(result, os.getpid())

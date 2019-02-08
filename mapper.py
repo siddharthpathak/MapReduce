@@ -8,11 +8,18 @@ import json
 import socketserver
 
 
-def input_map_func(line, output_count):
+def input_map_func(line):
+    output_count = {}
     words = line.split()
     for w in words:
         w = w.lower()
         output_count[w] = output_count.get(w, 0) + 1
+
+    return output_count
+
+
+def shutdown(server):
+    server.shutdown()
 
 
 def mapper(port):
@@ -42,18 +49,27 @@ def mapper(port):
             with open("./tmp/"+str(os.getpid())+"/in_output.txt") as output_file:
                 return json.load(output_file).get(key, 0)
 
+        @server.register_function
+        def destroy_mapper():
+            print("Killing the mapper")
+            t = Thread(target=shutdown, args=(server,))
+            t.start()
+            return 1
+
         server.serve_forever()
 
 
 def worker(master_url, master_port, input_file_name, section):
     print("Mapper worker started working with PID: ", os.getpid())
     print("I will work on", section)
-    output_count = {}
+    ip_string = []
 
     with open("./tmp/"+str(os.getpid())+"/"+input_file_name) as input_file:
         for line_number, line in enumerate(input_file):
             if section[0] <= line_number <= section[1]:
-                input_map_func(line, output_count)
+                ip_string.append(line)
+
+    output_count = input_map_func(" ".join(ip_string))
 
     # Write to the output file and send the keys to master
     with open("./tmp/"+str(os.getpid())+"/in_output.txt", "w+") as output_file:

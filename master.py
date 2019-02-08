@@ -7,6 +7,7 @@ from xmlrpc.server import SimpleXMLRPCRequestHandler
 import xmlrpc.client
 import subprocess
 import json
+import sys
 from mapper import mapper
 from reducer import reducer
 
@@ -90,7 +91,7 @@ def start_master_server(config_file):
                 subprocess.check_call(["mkdir", "-p", "./tmp/"+str(mappers[i])])
                 subprocess.check_call(["cp", input_config["input_file"], "./tmp/"+str(mappers[i])+"/"+input_config["input_file"]])
                 s = xmlrpc.client.ServerProxy('http://'+m["ip"]+":"+str(m["port"]))
-                # Here we also need to pass the mapper function 
+                # Here we also need to pass the mapper function
                 s.start_working(master_ip, master_port, input_config["input_file"], sections[i])
 
             # Keep checking if all the reducers are completed
@@ -146,11 +147,25 @@ def start_master_server(config_file):
             print("One reducer completed..")
             return 1
 
+        @server.register_function
+        def destroy_cluster():
+            print("Killing the cluster")
+            input_config = json.load(open(config_file))
+            input_mappers = input_config["mappers"]
+            for i, m in enumerate(input_mappers):
+                s = xmlrpc.client.ServerProxy('http://'+m["ip"]+":"+str(m["port"]))
+                s.destroy_mapper()
+
+            input_reducers = input_config["reducers"]
+            for i, r in enumerate(input_reducers):
+                s = xmlrpc.client.ServerProxy('http://'+r["ip"]+":"+str(r["port"]))
+                s.destroy_reducer()
+
+            return 1
+
         print("Starting master server with PID", os.getpid())
         server.serve_forever()
 
 
 if __name__ == '__main__':
-    # Start the master server before starting all the mappers
-    # Read the port from config file
-    start_master_server("config.json")
+    start_master_server(sys.argv[1])

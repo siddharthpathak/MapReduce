@@ -6,6 +6,7 @@ import xmlrpc.client
 from threading import Thread
 import json
 import socketserver
+import subprocess
 
 
 def input_map_func(line):
@@ -22,7 +23,7 @@ def shutdown(server):
     server.shutdown()
 
 
-def mapper(port):
+def mapper(ip, port):
     print("Mapper listening on port ", port)
 
     class ThreadedXMLRPCServer(socketserver.ThreadingMixIn, SimpleXMLRPCServer):
@@ -31,7 +32,7 @@ def mapper(port):
     class RequestHandler(SimpleXMLRPCRequestHandler):
         rpc_paths = ('/RPC2',)
 
-    with ThreadedXMLRPCServer(('localhost', port), requestHandler=RequestHandler, logRequests=False) as server:
+    with ThreadedXMLRPCServer((ip, port), requestHandler=RequestHandler, logRequests=False) as server:
         server.register_introspection_functions()
 
         @server.register_function
@@ -51,7 +52,8 @@ def mapper(port):
 
         @server.register_function
         def destroy_mapper():
-            print("Killing the mapper")
+            print("Killing the mapper..deleting local files")
+            subprocess.check_call(["rm", "-rf", "./tmp/" + str(os.getpid())])
             t = Thread(target=shutdown, args=(server,))
             t.start()
             return 1

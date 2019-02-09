@@ -4,6 +4,8 @@ from xmlrpc.server import SimpleXMLRPCRequestHandler
 import xmlrpc.client
 from threading import Thread
 import socketserver
+import subprocess
+import time
 
 
 def reducer_func(keys):
@@ -18,7 +20,7 @@ def shutdown(server):
     server.shutdown()
 
 
-def reducer(port):
+def reducer(ip, port):
     """
         Starts reducer RPC server on the specified port
     """
@@ -31,7 +33,7 @@ def reducer(port):
     class RequestHandler(SimpleXMLRPCRequestHandler):
         rpc_paths = ('/RPC2',)
 
-    with ThreadedXMLRPCServer(('localhost', port), requestHandler=RequestHandler, logRequests=False) as server:
+    with ThreadedXMLRPCServer((ip, port), requestHandler=RequestHandler, logRequests=False) as server:
         server.register_introspection_functions()
 
         @server.register_function
@@ -50,7 +52,7 @@ def reducer(port):
 
         @server.register_function
         def destroy_reducer():
-            print("Killing the reducer")
+            print("Killing the reducer..")
             t = Thread(target=shutdown, args=(server,))
             t.start()
             return 1
@@ -65,7 +67,7 @@ def worker(mappers, allotted_keys, master_url, master_port):
     """
     # Here the worker will calculate the output
     # Ask the mappers for the key
-    print("Reducer started working")
+    print("Reducer started working with PID", os.getpid())
     in_output = []
     for m in mappers:
         s = xmlrpc.client.ServerProxy('http://' + m[0] + ":" + str(m[1]))

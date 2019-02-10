@@ -1,7 +1,7 @@
 {
   "master_ip":"127.0.0.1",
   "master_port":6000,
-  "input_files":["sherlock.txt","assgn_test.txt"],
+  "input_files":["assgn_test.txt","sherlock.txt", "hound.txt"],
   "mappers": [
     {"ip":"127.0.0.1",
       "port":7000
@@ -11,6 +11,9 @@
     },
     {"ip":"127.0.0.1",
       "port":7002
+    },
+    {"ip":"127.0.0.1",
+      "port":7003
     }
   ],
   "reducers": [
@@ -22,6 +25,9 @@
     },
     {"ip":"127.0.0.1",
       "port":8002
+    },
+    {"ip":"127.0.0.1",
+      "port":8003
     }
   ]
 }

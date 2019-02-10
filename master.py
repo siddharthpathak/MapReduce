@@ -176,7 +176,6 @@ def start_master_server(config_file):
             """
             keys.extend(received_keys)
             mappers_completed.append(pid)
-            print("Received keys", mappers_completed)
             return 1
         server.register_function(send_mapper_keys)
 
@@ -215,40 +214,6 @@ def start_master_server(config_file):
 
             return 1
         server.register_function(destroy_cluster)
-
-        def restart_job(config_file):
-            del mappers[:]
-            del mappers_completed[:]
-            del reducers[:]
-            del reducers_completed[:]
-            spawn_mappers(config_file)
-            spawn_reducers(config_file)
-
-            input_config = json.load(open(config_file))
-            input_files = input_config["input_files"]
-            input_mappers = input_config["mappers"]
-            sections = []
-
-            for f, ipf in enumerate(input_files):
-                print("Splitting the input file", ipf)
-                # Split the file depending on the number of lines
-                sections.append((ipf, split_file(ipf, len(input_mappers))))
-
-            print(sections)
-
-            # Now tell each mapper to start working on their part
-            # We contact each mapper using RPC using IP and port from the config file
-            for i, m in enumerate(input_mappers):
-                subprocess.check_call(["mkdir", "-p", "./tmp/"+str(mappers[i])])
-                for f, ipf in enumerate(input_files):
-                    subprocess.check_call(["cp", ipf, "./tmp/"+str(mappers[i])+"/"+ipf])
-                s = xmlrpc.client.ServerProxy('http://'+m["ip"]+":"+str(m["port"]))
-                temp_section = [(f, s[i]) for f, s in sections]
-                # Here we also need to pass the mapper function
-                s.start_working(master_ip, master_port, temp_section)
-
-            return 1
-        server.register_function(restart_job)
 
         print("Starting master server with PID", os.getpid())
         server.serve_forever()

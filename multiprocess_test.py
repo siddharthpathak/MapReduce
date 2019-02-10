@@ -14,7 +14,7 @@ if __name__ == '__main__':
     map_reduce_output= (s.start_job("config.json"))
 
     seq_output_count = {}
-    for f in ("sherlock.txt", "assgn_test.txt"):
+    for f in ("assgn_test.txt","sherlock.txt","hound.txt"):
         with open(f) as input_file:
             for line_count, line in enumerate(input_file):
                 words = line.split()
@@ -28,12 +28,13 @@ if __name__ == '__main__':
         if seq_output_count[w[0]] == w[1]:
             pass
         else:
-            print("Output not matched for key", w[0])
+            print("Output not matched for key", w[0],w[1],seq_output_count[w[0]])
         map_reduce_count[w[0]]= w[1]
 
     if seq_output_count == map_reduce_count:
         print("Output Matched!!!")
 
+    print(seq_output_count["prateek"],map_reduce_count["prateek"])
     print("Killing the cluster")
     s.destroy_cluster()
 

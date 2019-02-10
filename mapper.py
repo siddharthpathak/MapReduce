@@ -5,16 +5,22 @@ from xmlrpc.server import SimpleXMLRPCRequestHandler
 import xmlrpc.client
 from threading import Thread
 import json
+import pickle
 import socketserver
 import subprocess
 
 
 def input_map_func(line):
+    output = []
     output_count = {}
     words = line.split()
     for w in words:
         w = w.lower()
-        output_count[w] = output_count.get(w, 0) + 1
+        output.append((w, 1))
+
+    # Combiner function
+    for k, v in output:
+        output_count[k] = output_count.get(k, 0) + 1
 
     return output_count
 
@@ -46,9 +52,15 @@ def mapper(ip, port):
             return 1
 
         @server.register_function
-        def get_keys(key):
-            with open("./tmp/"+str(os.getpid())+"/in_output.txt") as output_file:
-                return json.load(output_file).get(key, 0)
+        def get_keys(keys):
+            with open("./tmp/"+str(os.getpid())+"/in_output.txt", "rb") as output_file:
+                key_dict = pickle.load(output_file)
+                result = []
+                for k in keys:
+                    if k in key_dict:
+                        result.append((k, key_dict[k]))
+
+            return result
 
         @server.register_function
         def destroy_mapper():
@@ -74,7 +86,7 @@ def worker(master_url, master_port, section):
 
     output_count = input_map_func(" ".join(ip_string))
     # Write to the output file and send the keys to master
-    with open("./tmp/"+str(os.getpid())+"/in_output.txt", "w+") as output_file:
-        json.dump(output_count, output_file, indent=4)
+    with open("./tmp/"+str(os.getpid())+"/in_output.txt", "wb+") as output_file:
+        pickle.dump(output_count, output_file)
     s = xmlrpc.client.ServerProxy('http://'+master_url+":"+str(master_port))
     s.send_mapper_keys(list(output_count.keys()), os.getpid())

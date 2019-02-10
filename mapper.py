@@ -40,8 +40,8 @@ def mapper(ip, port):
             return 1
  
         @server.register_function
-        def start_working(master_url, master_port, input_file_name, section):
-            t = Thread(target=worker, args=(master_url, master_port, input_file_name, section))
+        def start_working(master_url, master_port, section):
+            t = Thread(target=worker, args=(master_url, master_port, section))
             t.start()
             return 1
 
@@ -61,18 +61,18 @@ def mapper(ip, port):
         server.serve_forever()
 
 
-def worker(master_url, master_port, input_file_name, section):
+def worker(master_url, master_port, section):
     print("Mapper worker started working with PID: ", os.getpid())
     print("I will work on", section)
     ip_string = []
 
-    with open("./tmp/"+str(os.getpid())+"/"+input_file_name) as input_file:
-        for line_number, line in enumerate(input_file):
-            if section[0] <= line_number <= section[1]:
-                ip_string.append(line)
+    for f, s in section:
+        with open("./tmp/"+str(os.getpid())+"/"+f) as input_file:
+            for line_number, line in enumerate(input_file):
+                if s[0] <= line_number <= s[1]:
+                    ip_string.append(line)
 
     output_count = input_map_func(" ".join(ip_string))
-
     # Write to the output file and send the keys to master
     with open("./tmp/"+str(os.getpid())+"/in_output.txt", "w+") as output_file:
         json.dump(output_count, output_file, indent=4)

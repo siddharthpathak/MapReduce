@@ -14,12 +14,14 @@ if __name__ == '__main__':
     map_reduce_output= (s.start_job("config.json"))
 
     seq_output_count = {}
-    with open("sherlock.txt") as input_file:
-        for line_count, line in enumerate(input_file):
-            words = line.split()
-            for w in words:
-                w = w.lower()
-                seq_output_count[w] = seq_output_count.get(w, 0) + 1
+    for f in ("sherlock.txt", "assgn_test.txt"):
+        with open(f) as input_file:
+            for line_count, line in enumerate(input_file):
+                words = line.split()
+                for w in words:
+                    w = w.lower()
+                    seq_output_count[w] = seq_output_count.get(w, 0) + 1
+
 
     map_reduce_count = {}
     for w in map_reduce_output:

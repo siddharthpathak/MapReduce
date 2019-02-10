@@ -105,19 +105,26 @@ def start_master_server(config_file):
             input_config = json.load(open(config_file))
             input_mappers = input_config["mappers"]
             input_reducers = input_config["reducers"]
+            input_files = input_config["input_files"]
+            sections = []
 
-            print("Splitting the input file", input_config["input_file"])
-            # Split the file depending on the number of lines
-            sections = split_file(input_config["input_file"], len(input_mappers))
+            for f, ipf in enumerate(input_files):
+                print("Splitting the input file", ipf)
+                # Split the file depending on the number of lines
+                sections.append((ipf, split_file(ipf, len(input_mappers))))
+
+            print(sections)
 
             # Now tell each mapper to start working on their part
             # We contact each mapper using RPC using IP and port from the config file
             for i, m in enumerate(input_mappers):
                 subprocess.check_call(["mkdir", "-p", "./tmp/"+str(mappers[i])])
-                subprocess.check_call(["cp", input_config["input_file"], "./tmp/"+str(mappers[i])+"/"+input_config["input_file"]])
+                for f, ipf in enumerate(input_files):
+                    subprocess.check_call(["cp", ipf, "./tmp/"+str(mappers[i])+"/"+ipf])
                 s = xmlrpc.client.ServerProxy('http://'+m["ip"]+":"+str(m["port"]))
+                temp_section = [(f, s[i]) for f, s in sections]
                 # Here we also need to pass the mapper function
-                s.start_working(master_ip, master_port, input_config["input_file"], sections[i])
+                s.start_working(master_ip, master_port, temp_section)
 
             # Keep checking if all the mappers have completed
             # Else we will ask for heartbeat every 4 seconds
@@ -135,7 +142,10 @@ def start_master_server(config_file):
                     except:
                         print("Mapper "+str(i)+" crashed..starting the job again")
                         destroy_cluster()
-                        restart_job(config_file)
+                        time.sleep(5)
+                        spawn_mappers(config_file)
+                        spawn_reducers(config_file)
+                        return start_job(config_file)
 
             # Keep checking if all the reducers are completed
             # Need to run this in while 1, then we can reply to client that we are done
@@ -154,7 +164,9 @@ def start_master_server(config_file):
                         print("Reducer "+str(i)+" crashed..starting the job again")
                         destroy_cluster()
                         time.sleep(5)
-                        restart_job(config_file)
+                        spawn_mappers(config_file)
+                        spawn_reducers(config_file)
+                        return start_job(config_file)
         server.register_function(start_job)
 
         def send_mapper_keys(received_keys, pid):
@@ -164,6 +176,7 @@ def start_master_server(config_file):
             """
             keys.extend(received_keys)
             mappers_completed.append(pid)
+            print("Received keys", mappers_completed)
             return 1
         server.register_function(send_mapper_keys)
 
@@ -180,6 +193,18 @@ def start_master_server(config_file):
         def destroy_cluster():
             print("Killing the cluster")
             input_config = json.load(open(config_file))
+            input_reducers = input_config["reducers"]
+            del mappers[:]
+            del mappers_completed[:]
+            del reducers[:]
+            del reducers_completed[:]
+            for i, r in enumerate(input_reducers):
+                s = xmlrpc.client.ServerProxy('http://'+r["ip"]+":"+str(r["port"]))
+                try:
+                    s.destroy_reducer()
+                except:
+                    print("Reducer already dead!")
+
             input_mappers = input_config["mappers"]
             for i, m in enumerate(input_mappers):
                 s = xmlrpc.client.ServerProxy('http://'+m["ip"]+":"+str(m["port"]))
@@ -188,13 +213,6 @@ def start_master_server(config_file):
                 except:
                     print("Mapper already dead!")
 
-            input_reducers = input_config["reducers"]
-            for i, r in enumerate(input_reducers):
-                s = xmlrpc.client.ServerProxy('http://'+r["ip"]+":"+str(r["port"]))
-                try:
-                    s.destroy_reducer()
-                except:
-                    print("Reducer already dead!")
             return 1
         server.register_function(destroy_cluster)
 
@@ -205,21 +223,29 @@ def start_master_server(config_file):
             del reducers_completed[:]
             spawn_mappers(config_file)
             spawn_reducers(config_file)
-            input_config = json.load(open(config_file))
-            input_mappers = input_config["mappers"]
 
-            print("Splitting the input file", input_config["input_file"])
-            # Split the file depending on the number of lines
-            sections = split_file(input_config["input_file"], len(input_mappers))
+            input_config = json.load(open(config_file))
+            input_files = input_config["input_files"]
+            input_mappers = input_config["mappers"]
+            sections = []
+
+            for f, ipf in enumerate(input_files):
+                print("Splitting the input file", ipf)
+                # Split the file depending on the number of lines
+                sections.append((ipf, split_file(ipf, len(input_mappers))))
+
+            print(sections)
 
             # Now tell each mapper to start working on their part
             # We contact each mapper using RPC using IP and port from the config file
             for i, m in enumerate(input_mappers):
                 subprocess.check_call(["mkdir", "-p", "./tmp/"+str(mappers[i])])
-                subprocess.check_call(["cp", input_config["input_file"], "./tmp/"+str(mappers[i])+"/"+input_config["input_file"]])
+                for f, ipf in enumerate(input_files):
+                    subprocess.check_call(["cp", ipf, "./tmp/"+str(mappers[i])+"/"+ipf])
                 s = xmlrpc.client.ServerProxy('http://'+m["ip"]+":"+str(m["port"]))
+                temp_section = [(f, s[i]) for f, s in sections]
                 # Here we also need to pass the mapper function
-                s.start_working(master_ip, master_port, input_config["input_file"], sections[i])
+                s.start_working(master_ip, master_port, temp_section)
 
             return 1
         server.register_function(restart_job)

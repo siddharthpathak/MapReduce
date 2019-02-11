@@ -10,19 +10,58 @@ import socketserver
 import subprocess
 
 
-def input_map_func(line):
+files_list = []
+
+
+def wc_input_map_func(d,line):
     output = []
-    output_count = {}
     words = line.split()
     for w in words:
         w = w.lower()
         output.append((w, 1))
 
-    # Combiner function
+    return output
+
+
+def wc_combiner(output):
+
+    output_count = {}
     for k, v in output:
         output_count[k] = output_count.get(k, 0) + 1
 
-    return output_count
+    return [(k, v) for k, v in output_count.items()]
+
+
+def inverted_input_map_func(d,line):
+    output = []
+    words = line.split()
+    for w in words:
+        w = w.lower()
+        output.append((w, d))
+
+    return output
+
+
+def inverted_combiner(output):
+
+    output_count = {}
+    for k, v in output:
+        if k in output_count:
+            if v in output_count[k]:
+                output_count[k][v] += 1
+            else:
+                output_count[k][v] = 1
+        else:
+            output_count[k] = {v: 1}
+
+    result = []
+    for k, v in output_count.items():
+        temp = []
+        for k2, v2 in v.items():
+            temp.append((k2, v2))
+        result.append((k, temp))
+
+    return result
 
 
 def shutdown(server):
@@ -46,21 +85,18 @@ def mapper(ip, port):
             return 1
  
         @server.register_function
-        def start_working(master_url, master_port, section):
-            t = Thread(target=worker, args=(master_url, master_port, section))
+        def start_working(master_url, master_port, section, r, func):
+            t = Thread(target=worker, args=(master_url, master_port, section, r, func))
             t.start()
             return 1
 
         @server.register_function
         def get_keys(keys):
-            with open("./tmp/"+str(os.getpid())+"/in_output.txt", "rb") as output_file:
-                key_dict = pickle.load(output_file)
-                result = []
-                for k in keys:
-                    if k in key_dict:
-                        result.append((k, key_dict[k]))
-
-            return result
+            for f in files_list:
+                if f == keys:
+                    with open("./tmp/"+str(os.getpid())+"/"+f+".txt", "rb") as output_file:
+                        return pickle.load(output_file)
+            return 0
 
         @server.register_function
         def destroy_mapper():
@@ -73,20 +109,37 @@ def mapper(ip, port):
         server.serve_forever()
 
 
-def worker(master_url, master_port, section):
+def worker(master_url, master_port, section, r, func):
     print("Mapper worker started working with PID: ", os.getpid())
-    print("I will work on", section)
-    ip_string = []
+    in_out = []
+    if func == "word_count":
+        input_map_func = wc_input_map_func
+        combiner = wc_combiner
+    else:
+        input_map_func = inverted_input_map_func
+        combiner = inverted_combiner
 
     for f, s in section:
         with open("./tmp/"+str(os.getpid())+"/"+f) as input_file:
+            ip_string = []
             for line_number, line in enumerate(input_file):
                 if s[0] <= line_number <= s[1]:
                     ip_string.append(line)
+            in_out.extend(input_map_func(f, " ".join(ip_string)))
 
-    output_count = input_map_func(" ".join(ip_string))
+    in_out = combiner(in_out)
+    file_keys = {}
+    for k, v in in_out:
+        temp_hash = str(hash(k) % r)
+        if temp_hash in file_keys:
+            file_keys[temp_hash].append((k, v))
+        else:
+            file_keys[temp_hash] = [(k, v)]
+
     # Write to the output file and send the keys to master
-    with open("./tmp/"+str(os.getpid())+"/in_output.txt", "wb+") as output_file:
-        pickle.dump(output_count, output_file)
+    for f in file_keys.keys():
+        with open("./tmp/"+str(os.getpid())+"/"+f+".txt", "wb+") as output_file:
+            pickle.dump(file_keys[f], output_file)
+            files_list.append(f)
     s = xmlrpc.client.ServerProxy('http://'+master_url+":"+str(master_port))
-    s.send_mapper_keys(list(output_count.keys()), os.getpid())
+    s.send_mapper_keys(files_list, os.getpid())

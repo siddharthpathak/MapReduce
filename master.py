@@ -23,31 +23,25 @@ def split_file(input_file_name, number_of_mappers):
         return sections
 
 
-def start_reducer_job(master_ip, master_port, config_file, keys):
+def start_reducer_job(master_ip, master_port, config_file, keys, func):
 
     print("All mappers completed..forming keys")
     keys_set = list(set(keys))
     input_reducers = json.load(open(config_file))["reducers"]
     input_mappers = [(d["ip"], d["port"]) for d in (json.load(open(config_file))["mappers"])]
-    reducer_keys = [[] for _ in range(0, len(input_reducers))]
+    reducer_keys = []
 
     print("Assigning keys to reducers")
-    kpr = len(keys_set)//len(input_reducers)
-    for i in range(0, len(input_reducers)):
-        for j in range(i*kpr, i*kpr + kpr):
-            reducer_keys[i].append(keys_set[j])
-
-    rem_keys = len(keys_set) % len(input_reducers)
-    if rem_keys > 0:
-        for k in keys_set[-rem_keys:]:
-            reducer_keys[-1].append(k)
+    for i in range(0, len(keys_set)):
+        reducer_keys.append((input_reducers[i]["ip"], input_reducers[i]["port"], keys_set[i]))
 
     print("Starting reducers")
-    for i, r in enumerate(input_reducers):
-        s = xmlrpc.client.ServerProxy('http://'+r["ip"]+":"+str(r["port"]))
+    for i in reducer_keys:
+        s = xmlrpc.client.ServerProxy('http://'+i[0]+":"+str(i[1]))
         # Here we also need to pass the reducer function
-        # And url and port of master
-        s.start_working(input_mappers, reducer_keys[i], master_ip, master_port)
+        s.start_working(input_mappers, i[2], master_ip, master_port, func)
+
+    return reducer_keys
 
 
 def start_master_server(config_file):
@@ -63,8 +57,9 @@ def start_master_server(config_file):
     reducers_completed = []
     keys = []
     final_result = []
-    master_ip = json.load(open(config_file))["master_ip"]
-    master_port = json.load(open(config_file))["master_port"]
+    input_config = json.load(open(config_file))
+    master_ip = input_config["master_ip"]
+    master_port = input_config["master_port"]
 
     with ThreadedXMLRPCServer((master_ip, master_port), requestHandler=RequestHandler, logRequests=False) as server:
 
@@ -106,14 +101,14 @@ def start_master_server(config_file):
             input_mappers = input_config["mappers"]
             input_reducers = input_config["reducers"]
             input_files = input_config["input_files"]
+            func = input_config["map_func"]
+            output_location = input_config["output_location"]
             sections = []
 
             for f, ipf in enumerate(input_files):
                 print("Splitting the input file", ipf)
                 # Split the file depending on the number of lines
                 sections.append((ipf, split_file(ipf, len(input_mappers))))
-
-            print(sections)
 
             # Now tell each mapper to start working on their part
             # We contact each mapper using RPC using IP and port from the config file
@@ -124,7 +119,7 @@ def start_master_server(config_file):
                 s = xmlrpc.client.ServerProxy('http://'+m["ip"]+":"+str(m["port"]))
                 temp_section = [(f, s[i]) for f, s in sections]
                 # Here we also need to pass the mapper function
-                s.start_working(master_ip, master_port, temp_section)
+                s.start_working(master_ip, master_port, temp_section, len(reducers), func)
 
             # Keep checking if all the mappers have completed
             # Else we will ask for heartbeat every 4 seconds
@@ -132,7 +127,7 @@ def start_master_server(config_file):
                 time.sleep(4)
                 if len(mappers) == len(mappers_completed):
                     print("All mappers completed..")
-                    start_reducer_job(master_ip, master_port, config_file, keys)
+                    actual_reducers = start_reducer_job(master_ip, master_port, config_file, keys, func)
                     break
 
                 for i, m in enumerate(input_mappers):
@@ -151,13 +146,15 @@ def start_master_server(config_file):
             # Need to run this in while 1, then we can reply to client that we are done
             while 1:
                 time.sleep(4)
-                if len(reducers) == len(reducers_completed):
-                    print("All reducers completed..")
+                if len(actual_reducers) == len(reducers_completed):
+                    print("All reducers completed..writing to file")
+                    #with open(output_location, "w+") as output_file:
+                    #    output_file.write(final_result)
                     return final_result
 
                 # Keep checking if all the reducers have completed the job
-                for i, m in enumerate(input_reducers):
-                    s = xmlrpc.client.ServerProxy('http://'+m["ip"]+":"+str(m["port"]))
+                for i in enumerate(actual_reducers):
+                    s = xmlrpc.client.ServerProxy('http://'+i[0]+":"+str(i[1]))
                     try:
                         s.check_if_alive()
                     except:

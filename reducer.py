@@ -8,12 +8,36 @@ import subprocess
 import time
 
 
-def reducer_func(keys):
+def wc_reducer_func(keys):
     output = {}
     for t in keys:
         output[t[0]] = output.get(t[0], 0) + t[1]
 
-    return output
+    return [(k, v) for k, v in output.items()]
+
+
+def inverted_reducer_func(keys):
+
+    output = {}
+    for t in keys:
+        if t[0] in output:
+            pass
+        else:
+            output[t[0]] = {}
+        for x in t[1]:
+            if x[0] in output[t[0]]:
+                output[t[0]][x[0]] += x[1]
+            else:
+                output[t[0]][x[0]] = 1
+    print(output)
+    final = []
+    for k, v in output.items():
+        temp = []
+        for k2, v2 in v.items():
+            temp.append((k2, v2))
+        final.append((k, temp))
+
+    return final
 
 
 def shutdown(server):
@@ -41,12 +65,12 @@ def reducer(ip, port):
             return 1
 
         @server.register_function
-        def start_working(input_mappers, keys, master_url, master_port):
+        def start_working(input_mappers, keys, master_url, master_port, func):
             """
                 Starts a new thread for the reducer worker.
 
             """
-            t = Thread(target=worker, args=(input_mappers, keys, master_url, master_port))
+            t = Thread(target=worker, args=(input_mappers, keys, master_url, master_port, func))
             t.start()
             return 1
 
@@ -60,7 +84,7 @@ def reducer(ip, port):
         server.serve_forever()
 
 
-def worker(mappers, allotted_keys, master_url, master_port):
+def worker(mappers, allotted_keys, master_url, master_port, func):
     """
         Reducer worker function. Calls the reduce function after fetching keys from all the mappers
         Master sends the list of mappers to the reducer
@@ -68,12 +92,18 @@ def worker(mappers, allotted_keys, master_url, master_port):
     # Here the worker will calculate the output
     # Ask the mappers for the key
     print("Reducer started working with PID", os.getpid())
+    if func == "word_count":
+        reducer_func = wc_reducer_func
+    else:
+        reducer_func = inverted_reducer_func
     in_output = []
+
     for m in mappers:
         s = xmlrpc.client.ServerProxy('http://' + m[0] + ":" + str(m[1]))
-        in_output.extend(s.get_keys(allotted_keys))
+        temp = s.get_keys(allotted_keys)
+        if temp != 0:
+            in_output.extend(temp)
 
-    final_output = reducer_func(in_output)
-    result = [(k, v) for k, v in final_output.items()]
+    result = reducer_func(in_output)
     s = xmlrpc.client.ServerProxy('http://'+master_url+":"+str(master_port))
     s.send_reducer_keys(result, os.getpid())

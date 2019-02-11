@@ -120,7 +120,7 @@ def worker(master_url, master_port, section, r, func):
         combiner = inverted_combiner
 
     for f, s in section:
-        with open("./tmp/"+str(os.getpid())+"/"+f) as input_file:
+        with open("./tmp/"+str(os.getpid())+"/"+f,  encoding='utf-8', errors='replace') as input_file:
             ip_string = []
             for line_number, line in enumerate(input_file):
                 if s[0] <= line_number <= s[1]:

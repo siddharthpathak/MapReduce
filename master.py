@@ -13,7 +13,7 @@ from reducer import reducer
 
 
 def split_file(input_file_name, number_of_mappers):
-    with open(input_file_name) as input_file:
+    with open(input_file_name, encoding='utf-8', errors='replace') as input_file:
         for line_count, line in enumerate(input_file):
             pass
         section_size = (line_count+1)//number_of_mappers

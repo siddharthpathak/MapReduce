@@ -5,11 +5,11 @@ import socketserver
 from xmlrpc.server import SimpleXMLRPCServer
 from xmlrpc.server import SimpleXMLRPCRequestHandler
 import xmlrpc.client
-import subprocess
 import json
 import sys
 from mapper import mapper
 from reducer import reducer
+from shutil import copyfile
 
 
 def split_file(input_file_name, number_of_mappers):
@@ -119,9 +119,9 @@ def start_master_server(config_file):
             # Now tell each mapper to start working on their part
             # We contact each mapper using RPC using IP and port from the config file
             for i, m in enumerate(input_mappers):
-                subprocess.check_call(["mkdir", "-p", "./tmp/"+str(mappers[i])],shell=True)
+                os.mkdir("./tmp/"+str(mappers[i]))
                 for f, ipf in enumerate(input_files):
-                    subprocess.check_call(["cp", ipf, "./tmp/"+str(mappers[i])+"/"+ipf],shell=True)
+                    copyfile(ipf, "./tmp/"+str(mappers[i])+"/"+ipf)
                 s = xmlrpc.client.ServerProxy('http://'+m["ip"]+":"+str(m["port"]))
                 temp_section = [(f, s[i]) for f, s in sections]
                 # Here we also need to pass the mapper function

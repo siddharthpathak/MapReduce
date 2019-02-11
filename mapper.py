@@ -7,8 +7,7 @@ from threading import Thread
 import json
 import pickle
 import socketserver
-import subprocess
-
+from shutil import rmtree
 
 files_list = []
 
@@ -101,7 +100,7 @@ def mapper(ip, port):
         @server.register_function
         def destroy_mapper():
             print("Killing the mapper..deleting local files")
-            subprocess.check_call(["rm", "-rf", "./tmp/" + str(os.getpid())])
+            rmtree("./tmp/" + str(os.getpid()))
             t = Thread(target=shutdown, args=(server,))
             t.start()
             return 1

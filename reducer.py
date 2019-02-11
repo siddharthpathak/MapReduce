@@ -20,16 +20,13 @@ def inverted_reducer_func(keys):
 
     output = {}
     for t in keys:
-        if t[0] in output:
-            pass
-        else:
+        if t[0] not in output:
             output[t[0]] = {}
         for x in t[1]:
             if x[0] in output[t[0]]:
                 output[t[0]][x[0]] += x[1]
             else:
-                output[t[0]][x[0]] = 1
-    print(output)
+                output[t[0]][x[0]] = x[1]
     final = []
     for k, v in output.items():
         temp = []
@@ -103,7 +100,6 @@ def worker(mappers, allotted_keys, master_url, master_port, func):
         temp = s.get_keys(allotted_keys)
         if temp != 0:
             in_output.extend(temp)
-
     result = reducer_func(in_output)
     s = xmlrpc.client.ServerProxy('http://'+master_url+":"+str(master_port))
     s.send_reducer_keys(result, os.getpid())

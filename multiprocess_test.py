@@ -10,15 +10,10 @@ if __name__ == '__main__':
     func = input_config["map_func"]
     s = xmlrpc.client.ServerProxy('http://' + master_ip + ":" + str(master_port))
 
-    print("Starting mappers")
-    s.spawn_mappers("config.json")
-    print("Mappers Initialzed..")
+    print("Initializing cluster..")
+    s.init_cluster(sys.argv[1])
 
-    print("Starting reducers")
-    s.spawn_reducers("config.json")
-    print("Reducers Intialized")
-
-    print("Starting job...")
+    print("Starting job...running", input_config["map_func"])
     map_reduce_output = (s.start_job("config.json"))
 
     if func == "word_count":
@@ -59,9 +54,17 @@ if __name__ == '__main__':
                                 seq_output_count[w][f] = 1
                         else:
                             seq_output_count[w] = {f: 1}
+        map_reduce_count = {}
 
-        print(seq_output_count)
-        print(map_reduce_output)
+        for t in map_reduce_output:
+            map_reduce_count[t[0]] = {}
+            for x in t[1]:
+                map_reduce_count[t[0]][x[0]] = x[1]
+
+        if seq_output_count == map_reduce_count:
+            print("Output Matched!!!")
+        else:
+            print("Not matched")
 
     print("Killing the cluster")
     s.destroy_cluster()

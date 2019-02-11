@@ -1,8 +1,8 @@
 {
   "master_ip":"127.0.0.1",
   "master_port":6000,
-  "input_files":["assgn_test.txt","assgn_test_2.txt","sherlock.txt"],
-  "map_func":"word_count",
+  "input_files":["sherlock.txt"],
+  "map_func":"inverted_index",
   "output_location":"output.txt",
   "mappers": [
     {"ip":"127.0.0.1",

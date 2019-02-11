@@ -63,6 +63,12 @@ def start_master_server(config_file):
 
     with ThreadedXMLRPCServer((master_ip, master_port), requestHandler=RequestHandler, logRequests=False) as server:
 
+        def init_cluster(config_file):
+            spawn_mappers(config_file)
+            spawn_reducers(config_file)
+            return 1
+        server.register_function(init_cluster)
+
         def spawn_mappers(config_file):
             """
                 Starts mappers as per the input config file

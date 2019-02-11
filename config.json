@@ -1,6 +1,6 @@
 {
   "master_ip":"127.0.0.1",
-  "master_port":6000,
+  "master_port":60000,
   "input_files":["sherlock.txt", "hound.txt"],
   "map_func":"inverted_index",
   "output_location":"output.txt",

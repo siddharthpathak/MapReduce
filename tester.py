@@ -19,7 +19,7 @@ if __name__ == '__main__':
     if func == "word_count":
         seq_output_count = {}
         for f in (input_config["input_files"]):
-            with open(f) as input_file:
+            with open(f,encoding='utf-8', errors='replace') as input_file:
                 for line_count, line in enumerate(input_file):
                     words = line.split()
                     for w in words:
@@ -42,7 +42,7 @@ if __name__ == '__main__':
     else:
         seq_output_count = {}
         for f in (input_config["input_files"]):
-            with open(f) as input_file:
+            with open(f,encoding='utf-8', errors='replace') as input_file:
                 for line_count, line in enumerate(input_file):
                     words = line.split()
                     for w in words:

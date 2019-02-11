@@ -119,7 +119,7 @@ def start_master_server(config_file):
             # Now tell each mapper to start working on their part
             # We contact each mapper using RPC using IP and port from the config file
             for i, m in enumerate(input_mappers):
-                os.mkdir("./tmp/"+str(mappers[i]))
+                os.makedirs("./tmp/"+str(mappers[i]))
                 for f, ipf in enumerate(input_files):
                     copyfile(ipf, "./tmp/"+str(mappers[i])+"/"+ipf)
                 s = xmlrpc.client.ServerProxy('http://'+m["ip"]+":"+str(m["port"]))

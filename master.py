@@ -119,9 +119,9 @@ def start_master_server(config_file):
             # Now tell each mapper to start working on their part
             # We contact each mapper using RPC using IP and port from the config file
             for i, m in enumerate(input_mappers):
-                subprocess.check_call(["mkdir", "-p", "./tmp/"+str(mappers[i])])
+                subprocess.check_call(["mkdir", "-p", "./tmp/"+str(mappers[i])],shell=True)
                 for f, ipf in enumerate(input_files):
-                    subprocess.check_call(["cp", ipf, "./tmp/"+str(mappers[i])+"/"+ipf])
+                    subprocess.check_call(["cp", ipf, "./tmp/"+str(mappers[i])+"/"+ipf],shell=True)
                 s = xmlrpc.client.ServerProxy('http://'+m["ip"]+":"+str(m["port"]))
                 temp_section = [(f, s[i]) for f, s in sections]
                 # Here we also need to pass the mapper function

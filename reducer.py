@@ -94,7 +94,6 @@ def worker(mappers, allotted_keys, master_url, master_port, func):
     else:
         reducer_func = inverted_reducer_func
     in_output = []
-
     for m in mappers:
         s = xmlrpc.client.ServerProxy('http://' + m[0] + ":" + str(m[1]))
         temp = s.get_keys(allotted_keys)

@@ -159,7 +159,7 @@ def start_master_server(config_file):
                     return final_result
 
                 # Keep checking if all the reducers have completed the job
-                for i in enumerate(actual_reducers):
+                for i in actual_reducers:
                     s = xmlrpc.client.ServerProxy('http://'+i[0]+":"+str(i[1]))
                     try:
                         s.check_if_alive()

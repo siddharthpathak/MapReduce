@@ -10,4 +10,4 @@ map reduce job as per the config file.
 The default config file options initialize a cluster of four mappers and reducers, runs map reduce for inverted index on the
 documents sherlock.txt and hound.txt and compares the output to sequential execution of the same job.
 
-More details can be found in /report/report.pdf
+More details about the implementation can be found in [/report/report.pdf] (https://github.iu.edu/sidpath/Map_Reduce/blob/master/report/report.pdf)
